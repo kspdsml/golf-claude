@@ -50,11 +50,16 @@ export function allFaceUp(cards: Card[]): boolean {
   return cards.every(c => c.faceUp);
 }
 
-export function initGameState(player0Name: string, player0Id: string, player1Name: string, player1Id: string): GameState {
+export function initGameState(
+  player0Name: string,
+  player0Id: string,
+  player1Name: string,
+  player1Id: string,
+  totalRounds: number = 6
+): GameState {
   const deck = createDeck();
   const p0Cards = deck.splice(0, 6);
   const p1Cards = deck.splice(0, 6);
-  // Turn one card face up for discard pile start
   const firstDiscard = deck.splice(0, 1);
   firstDiscard[0].faceUp = true;
 
@@ -73,6 +78,34 @@ export function initGameState(player0Name: string, player0Id: string, player1Nam
     turnPhase: 'draw',
     lastRoundTrigger: null,
     winner: null,
+    scores: null,
+    totalRounds,
+    currentRound: 1,
+    roundScores: [[], []],
+  };
+}
+
+export function startNextRound(state: GameState): GameState {
+  const deck = createDeck();
+  const p0Cards = deck.splice(0, 6);
+  const p1Cards = deck.splice(0, 6);
+  const firstDiscard = deck.splice(0, 1);
+  firstDiscard[0].faceUp = true;
+
+  return {
+    ...state,
+    status: 'initial_flip',
+    currentRound: state.currentRound + 1,
+    currentPlayer: 0,
+    deck,
+    discardPile: firstDiscard,
+    players: [
+      { ...state.players[0], cards: p0Cards, initialFlipsDone: 0 },
+      { ...state.players[1], cards: p1Cards, initialFlipsDone: 0 },
+    ],
+    drawnCard: null,
+    turnPhase: 'draw',
+    lastRoundTrigger: null,
     scores: null,
   };
 }
@@ -141,22 +174,17 @@ export function handleDiscardDrawn(state: GameState): GameState {
 function advanceTurn(state: GameState, currentPlayerIndex: number): GameState {
   const player = state.players[currentPlayerIndex];
 
-  // Check if current player just finished all cards
   if (allFaceUp(player.cards)) {
     if (state.lastRoundTrigger === null) {
-      // Trigger last round
       state.lastRoundTrigger = currentPlayerIndex;
       state.status = 'last_round';
-      // Other player gets one more turn
       state.currentPlayer = 1 - currentPlayerIndex;
       state.turnPhase = 'draw';
     } else {
-      // Last round is over
-      return finishGame(state);
+      return finishRound(state);
     }
   } else if (state.status === 'last_round') {
-    // The other player just took their last turn
-    return finishGame(state);
+    return finishRound(state);
   } else {
     state.currentPlayer = 1 - currentPlayerIndex;
     state.turnPhase = 'draw';
@@ -165,8 +193,7 @@ function advanceTurn(state: GameState, currentPlayerIndex: number): GameState {
   return state;
 }
 
-function finishGame(state: GameState): GameState {
-  // Flip all cards
+function finishRound(state: GameState): GameState {
   for (const player of state.players) {
     for (const card of player.cards) {
       card.faceUp = true;
@@ -176,12 +203,24 @@ function finishGame(state: GameState): GameState {
   const score0 = calculateScore(state.players[0].cards);
   const score1 = calculateScore(state.players[1].cards);
   state.scores = [score0, score1];
-  state.status = 'finished';
 
-  // Lower score wins
-  if (score0 < score1) state.winner = 0;
-  else if (score1 < score0) state.winner = 1;
-  else state.winner = -1; // tie
+  state.roundScores = [
+    [...(state.roundScores?.[0] ?? []), score0],
+    [...(state.roundScores?.[1] ?? []), score1],
+  ];
+
+  const totalRounds = state.totalRounds ?? 6;
+  if (state.currentRound < totalRounds) {
+    state.status = 'round_over';
+    state.winner = null;
+  } else {
+    state.status = 'finished';
+    const total0 = state.roundScores[0].reduce((a, b) => a + b, 0);
+    const total1 = state.roundScores[1].reduce((a, b) => a + b, 0);
+    if (total0 < total1) state.winner = 0;
+    else if (total1 < total0) state.winner = 1;
+    else state.winner = -1;
+  }
 
   return state;
 }
@@ -210,5 +249,5 @@ export function suitSymbol(suit: string): string {
 }
 
 export function suitColor(suit: string): string {
-  return suit === 'hearts' || suit === 'diamonds' ? 'text-red-600' : 'text-gray-900';
+  return suit === 'hearts' || suit === 'diamonds' ? 'text-red-500' : 'text-gray-900';
 }

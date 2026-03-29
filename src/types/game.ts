@@ -14,7 +14,7 @@ export interface PlayerState {
   initialFlipsDone: number;
 }
 
-export type GameStatus = 'waiting' | 'initial_flip' | 'playing' | 'last_round' | 'finished';
+export type GameStatus = 'waiting' | 'initial_flip' | 'playing' | 'last_round' | 'round_over' | 'finished';
 export type TurnPhase = 'draw' | 'act';
 
 export interface GameState {
@@ -28,6 +28,9 @@ export interface GameState {
   lastRoundTrigger: number | null;
   winner: number | null;
   scores: [number, number] | null;
+  totalRounds: number;
+  currentRound: number;
+  roundScores: [number[], number[]];
 }
 
 export interface Room {

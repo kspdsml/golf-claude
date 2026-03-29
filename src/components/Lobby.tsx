@@ -12,6 +12,7 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'home' | 'join'>('home');
+  const [totalRounds, setTotalRounds] = useState(6);
 
   const playerId = React.useMemo(() => {
     let id = localStorage.getItem('golf_player_id');
@@ -39,6 +40,9 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
         lastRoundTrigger: null,
         winner: null,
         scores: null,
+        totalRounds,
+        currentRound: 1,
+        roundScores: [[], []],
       };
       const { error: err } = await supabase.from('rooms').insert({
         code,
@@ -71,7 +75,6 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
       if (gs.status !== 'waiting') throw new Error('Game already in progress');
       if (gs.players.length >= 2) throw new Error('Room is full');
 
-      // Add player 2
       const updatedState = {
         ...gs,
         players: [
@@ -95,11 +98,11 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-green-900 flex items-center justify-center p-4">
-      <div className="bg-green-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-green-600">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #166534, #052e16)' }}>
+      <div className="bg-green-800/80 backdrop-blur rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-green-600/50">
         <div className="text-center mb-6">
           <div className="text-5xl mb-2">⛳</div>
-          <h1 className="text-3xl font-bold text-white">Golf</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Golf</h1>
           <p className="text-green-300 text-sm mt-1">6-Card Multiplayer</p>
         </div>
 
@@ -111,12 +114,33 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
             onChange={e => setName(e.target.value)}
             placeholder="Enter your name"
             maxLength={20}
-            className="w-full px-3 py-2 rounded-lg bg-green-700 text-white placeholder-green-400 border border-green-500 focus:outline-none focus:border-yellow-400"
+            className="w-full px-3 py-2 rounded-lg bg-green-900/60 text-white placeholder-green-500 border border-green-600 focus:outline-none focus:border-yellow-400 transition-colors"
           />
         </div>
 
+        {mode === 'home' && (
+          <div className="mb-4">
+            <label className="text-green-200 text-sm font-medium block mb-2">Rounds</label>
+            <div className="flex gap-2">
+              {[3, 6, 9].map(r => (
+                <button
+                  key={r}
+                  onClick={() => setTotalRounds(r)}
+                  className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all border ${
+                    totalRounds === r
+                      ? 'bg-yellow-500 text-gray-900 border-yellow-400 shadow-lg shadow-yellow-900/30'
+                      : 'bg-green-900/60 text-green-300 border-green-600 hover:border-green-400'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {error && (
-          <div className="mb-4 p-3 bg-red-800 border border-red-600 rounded-lg text-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-900/60 border border-red-600 rounded-lg text-red-200 text-sm">
             {error}
           </div>
         )}
@@ -126,14 +150,14 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-xl transition-colors disabled:opacity-50"
+              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-gray-900 font-bold rounded-xl transition-all disabled:opacity-50 shadow-lg"
             >
               {loading ? 'Creating...' : 'Create Room'}
             </button>
             <button
               onClick={() => setMode('join')}
               disabled={loading}
-              className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition-colors border border-green-400"
+              className="w-full py-3 bg-green-700/60 hover:bg-green-600/60 active:scale-95 text-white font-bold rounded-xl transition-all border border-green-500"
             >
               Join Room
             </button>
@@ -150,29 +174,29 @@ export const Lobby: React.FC<Props> = ({ onJoin }) => {
                 onChange={e => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="XXXX"
                 maxLength={4}
-                className="w-full px-3 py-2 rounded-lg bg-green-700 text-white placeholder-green-400 border border-green-500 focus:outline-none focus:border-yellow-400 text-center text-2xl font-mono tracking-widest uppercase"
+                className="w-full px-3 py-2 rounded-lg bg-green-900/60 text-white placeholder-green-500 border border-green-600 focus:outline-none focus:border-yellow-400 transition-colors text-center text-2xl font-mono tracking-widest uppercase"
               />
             </div>
             <button
               onClick={handleJoin}
               disabled={loading}
-              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold rounded-xl transition-colors disabled:opacity-50"
+              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-gray-900 font-bold rounded-xl transition-all disabled:opacity-50 shadow-lg"
             >
               {loading ? 'Joining...' : 'Join Game'}
             </button>
             <button
               onClick={() => { setMode('home'); setError(''); }}
-              className="w-full py-2 text-green-300 hover:text-white text-sm transition-colors"
+              className="w-full py-2 text-green-400 hover:text-white text-sm transition-colors"
             >
               ← Back
             </button>
           </div>
         )}
 
-        <div className="mt-6 pt-4 border-t border-green-600">
-          <p className="text-green-400 text-xs text-center">
-            Card values: K=0, A=1, 2=-2, J/Q=10, others=face value<br/>
-            Matching column = 0 pts • Lowest score wins!
+        <div className="mt-6 pt-4 border-t border-green-700">
+          <p className="text-green-500 text-xs text-center leading-relaxed">
+            K=0 · A=1 · 2=−2 · J/Q=10 · others=face value<br/>
+            Matching column = 0 pts · Lowest total wins
           </p>
         </div>
       </div>

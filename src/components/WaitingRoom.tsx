@@ -33,7 +33,7 @@ export const WaitingRoom: React.FC<Props> = ({ roomCode, playerIndex, onGameStar
           if (playerIndex === 0) {
             const p0 = gs.players[0];
             const p1 = gs.players[1];
-            const newState = initGameState(p0.name, p0.id, p1.name, p1.id);
+            const newState = initGameState(p0.name, p0.id, p1.name, p1.id, gs.totalRounds || 6);
             await supabase
               .from('rooms')
               .update({ game_state: newState })
