@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const CardComponent: React.FC<Props> = ({ card, onClick, highlight = 'none', small = false, flipped = false }) => {
-  const size = small ? 'w-12 h-18' : 'w-16 h-24';
+  const size = small ? 'w-12 h-[4.5rem]' : 'w-16 h-24';
   const textSize = small ? 'text-xs' : 'text-sm';
   const symbolSize = small ? 'text-lg' : 'text-2xl';
   const prevFaceUp = useRef(card.faceUp);
@@ -26,30 +26,34 @@ export const CardComponent: React.FC<Props> = ({ card, onClick, highlight = 'non
     prevFaceUp.current = card.faceUp;
   }, [card.faceUp]);
 
+  const isSelect = highlight === 'select';
+
   const borderColor =
-    highlight === 'select' ? 'border-yellow-400 border-[3px] shadow-yellow-400/40 shadow-lg' :
-    highlight === 'match' ? 'border-green-400 border-[3px]' :
-    'border-gray-200/80 border-2';
+    isSelect ? 'border-amber-400 border-[2.5px]' :
+    highlight === 'match' ? 'border-green-400 border-[2.5px]' :
+    'border-gray-300/60 border';
 
   const flipClass = flipping ? 'card-flip-in' : '';
+  const pulseClass = isSelect ? 'turn-pulse' : '';
 
   if (!card.faceUp) {
     return (
       <button
         onClick={onClick}
-        className={`${size} rounded-xl ${borderColor} flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 select-none shadow-md`}
+        className={`${size} rounded-xl ${borderColor} flex items-center justify-center cursor-pointer transition-all hover:brightness-125 active:scale-95 select-none ${pulseClass}`}
         style={{
-          background: 'linear-gradient(135deg, #1e3a8a, #1e40af)',
+          background: 'linear-gradient(155deg, #1c3161, #111e45)',
+          backgroundImage: [
+            'repeating-linear-gradient(45deg, rgba(212,160,23,0.07) 0px, rgba(212,160,23,0.07) 1px, transparent 1px, transparent 9px)',
+            'repeating-linear-gradient(-45deg, rgba(212,160,23,0.07) 0px, rgba(212,160,23,0.07) 1px, transparent 1px, transparent 9px)',
+            'linear-gradient(155deg, #1c3161, #111e45)',
+          ].join(', '),
+          boxShadow: '0 4px 10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07)',
           transform: flipped ? 'rotate(180deg)' : undefined,
         }}
       >
-        <div className="w-full h-full rounded-xl flex items-center justify-center overflow-hidden">
-          <svg viewBox="0 0 40 60" className="w-10 h-14 opacity-20" fill="white">
-            <pattern id="p" width="8" height="8" patternUnits="userSpaceOnUse">
-              <circle cx="4" cy="4" r="1.5" fill="white" />
-            </pattern>
-            <rect width="40" height="60" fill="url(#p)" />
-          </svg>
+        <div className="w-full h-full rounded-xl flex items-center justify-center">
+          <div className="opacity-20 text-amber-300 text-xl">♠</div>
         </div>
       </button>
     );
@@ -61,8 +65,11 @@ export const CardComponent: React.FC<Props> = ({ card, onClick, highlight = 'non
   return (
     <button
       onClick={onClick}
-      className={`${size} rounded-xl ${borderColor} bg-white flex flex-col items-start justify-between p-1.5 cursor-pointer transition-all hover:brightness-95 active:scale-95 select-none shadow-md ${flipClass}`}
-      style={{ transform: flipped ? 'rotate(180deg)' : undefined }}
+      className={`${size} rounded-xl ${borderColor} bg-white flex flex-col items-start justify-between p-1.5 cursor-pointer transition-all hover:brightness-95 active:scale-95 select-none ${flipClass} ${pulseClass}`}
+      style={{
+        transform: flipped ? 'rotate(180deg)' : undefined,
+        boxShadow: '0 4px 10px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.04)',
+      }}
     >
       <div className={`${textSize} font-bold ${color} leading-none`}>
         <div>{card.rank}</div>

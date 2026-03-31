@@ -96,7 +96,7 @@ export function startNextRound(state: GameState): GameState {
     ...state,
     status: 'initial_flip',
     currentRound: state.currentRound + 1,
-    currentPlayer: 0,
+    currentPlayer: state.currentRound % 2,
     deck,
     discardPile: firstDiscard,
     players: [
@@ -122,7 +122,6 @@ export function handleInitialFlip(state: GameState, playerIndex: number, cardInd
   const bothReady = newState.players.every(p => p.initialFlipsDone >= 2);
   if (bothReady) {
     newState.status = 'playing';
-    newState.currentPlayer = 0;
     newState.turnPhase = 'draw';
   }
 

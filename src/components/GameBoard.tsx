@@ -20,6 +20,20 @@ interface Props {
   initialState: GameState;
 }
 
+const BG = 'radial-gradient(ellipse 130% 70% at 50% -5%, #0e3d20 0%, #051508 55%, #010804 100%)';
+
+const PANEL: React.CSSProperties = {
+  background: 'rgba(8, 22, 10, 0.92)',
+  border: '1px solid rgba(212, 160, 23, 0.18)',
+  boxShadow: '0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+};
+
+const GOLD_BTN: React.CSSProperties = {
+  background: 'linear-gradient(to bottom, #d4a017, #a07010)',
+  color: '#1a0f00',
+  boxShadow: '0 4px 14px rgba(212,160,23,0.35)',
+};
+
 export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, initialState }) => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [updating, setUpdating] = useState(false);
@@ -138,8 +152,8 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
       return 'Waiting for opponent to peek...';
     }
     if (gameState.status === 'last_round') {
-      if (isMyTurn) return 'Last turn! Make it count!';
-      return `${gameState.players[gameState.lastRoundTrigger!]?.name} went out! Last round.`;
+      if (isMyTurn) return 'Last turn — make it count';
+      return `${gameState.players[gameState.lastRoundTrigger!]?.name} went out · Last round`;
     }
     if (gameState.status === 'playing') {
       if (isMyTurn) {
@@ -160,49 +174,63 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
     const roundWinner = myRoundScore < oppRoundScore ? 'me' : oppRoundScore < myRoundScore ? 'opp' : 'tie';
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #166534, #052e16)' }}>
-        <div className="bg-green-800/80 backdrop-blur rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-green-600/50">
-          <div className="text-center mb-4">
-            <div className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-1">Round {currentRound} of {totalRounds}</div>
-            <div className="text-3xl mb-1">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: BG }}>
+        <div className="w-full max-w-sm rounded-2xl p-6 fade-slide-up" style={PANEL}>
+          <div className="text-center mb-5">
+            <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgba(212,160,23,0.7)' }}>
+              Round {currentRound} of {totalRounds}
+            </div>
+            <div className="text-4xl mb-2">
               {roundWinner === 'tie' ? '🤝' : roundWinner === 'me' ? '⭐' : '😮'}
             </div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-white tracking-wide">
               {roundWinner === 'tie' ? 'Tied Round' : roundWinner === 'me' ? 'Round Won!' : 'Round Lost'}
             </h2>
           </div>
 
-          {/* Round scores */}
           <div className="space-y-2 mb-4">
             {[
               { name: me?.name ?? 'You', roundScore: myRoundScore, total: myTotal, isMe: true },
               { name: opponent?.name ?? 'Opponent', roundScore: oppRoundScore, total: oppTotal, isMe: false },
             ].map(({ name, roundScore, total, isMe }) => (
-              <div key={name} className={`p-3 rounded-xl flex items-center justify-between ${isMe ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-green-900/40 border border-green-700'}`}>
+              <div
+                key={name}
+                className="p-3 rounded-xl flex items-center justify-between"
+                style={isMe ? {
+                  background: 'rgba(212,160,23,0.1)',
+                  border: '1px solid rgba(212,160,23,0.3)',
+                } : {
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
                 <div>
-                  <div className={`font-semibold text-sm ${isMe ? 'text-yellow-300' : 'text-white'}`}>{name}{isMe ? ' (you)' : ''}</div>
-                  <div className="text-green-400 text-xs">Total: {total}</div>
+                  <div className="font-semibold text-sm" style={{ color: isMe ? '#d4a017' : 'rgba(255,255,255,0.85)' }}>
+                    {name}{isMe ? ' (you)' : ''}
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'rgba(134,187,134,0.6)' }}>Total: {total}</div>
                 </div>
-                <div className={`text-2xl font-mono font-bold ${isMe ? 'text-yellow-300' : 'text-white'}`}>
+                <div className="text-2xl font-mono font-bold" style={{ color: isMe ? '#d4a017' : 'rgba(255,255,255,0.9)' }}>
                   {roundScore}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Per-round score history */}
           {(gameState.roundScores?.[0]?.length ?? 0) > 1 && (
-            <div className="mb-4 bg-green-900/40 rounded-xl p-3 border border-green-700">
-              <div className="text-green-400 text-xs font-semibold mb-2 uppercase tracking-wide">Score History</div>
-              <div className="space-y-1">
-                {(gameState.roundScores?.[0] ?? []).map((_, i) => (
-                  <div key={i} className="flex items-center text-xs">
-                    <span className="text-green-500 w-14">Round {i + 1}</span>
-                    <span className="text-yellow-300 flex-1 text-center">{gameState.roundScores[playerIndex][i]}</span>
-                    <span className="text-white flex-1 text-center">{gameState.roundScores[1 - playerIndex][i]}</span>
-                  </div>
-                ))}
+            <div className="mb-4 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="text-xs font-semibold mb-2 uppercase tracking-widest flex justify-between" style={{ color: 'rgba(212,160,23,0.6)' }}>
+                <span>History</span>
+                <span style={{ color: '#d4a017' }}>{me?.name ?? 'You'}</span>
+                <span className="text-white/50">{opponent?.name ?? 'Opp'}</span>
               </div>
+              {(gameState.roundScores?.[0] ?? []).map((_, i) => (
+                <div key={i} className="flex items-center text-xs py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span className="flex-1" style={{ color: 'rgba(100,150,100,0.7)' }}>Round {i + 1}</span>
+                  <span className="w-12 text-center font-mono" style={{ color: '#d4a017' }}>{gameState.roundScores[playerIndex][i]}</span>
+                  <span className="w-12 text-center font-mono text-white/60">{gameState.roundScores[1 - playerIndex][i]}</span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -211,18 +239,19 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
               <button
                 onClick={handleNextRound}
                 disabled={updating}
-                className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-gray-900 font-bold rounded-xl transition-all disabled:opacity-50 shadow-lg"
+                className="w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 text-sm tracking-wide"
+                style={GOLD_BTN}
               >
                 {updating ? 'Starting...' : `Start Round ${currentRound + 1}`}
               </button>
             ) : (
-              <div className="py-3 text-green-400 text-sm">
-                <div className="flex gap-1 justify-center mb-2">
+              <div className="py-3" style={{ color: 'rgba(134,187,134,0.6)' }}>
+                <div className="flex gap-1.5 justify-center mb-2">
                   {[0,1,2].map(i => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                    <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'rgba(212,160,23,0.4)', animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </div>
-                Waiting for host to start next round...
+                <span className="text-sm">Waiting for host to start next round...</span>
               </div>
             )}
           </div>
@@ -239,44 +268,58 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
     const tied = gameState.winner === -1;
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #166534, #052e16)' }}>
-        <div className="bg-green-800/80 backdrop-blur rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-green-600/50">
-          <div className="text-center mb-5">
-            <div className="text-5xl mb-2">{tied ? '🤝' : won ? '🏆' : '😔'}</div>
-            <h2 className="text-2xl font-bold text-white">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: BG }}>
+        <div className="w-full max-w-sm rounded-2xl p-6 fade-slide-up" style={PANEL}>
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-3" style={{ filter: tied || won ? 'drop-shadow(0 0 16px rgba(212,160,23,0.6))' : undefined }}>
+              {tied ? '🤝' : won ? '🏆' : '😔'}
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-wide">
               {tied ? "It's a Tie!" : won ? 'You Win!' : 'You Lose!'}
             </h2>
-            <p className="text-green-400 text-xs mt-1">{totalRounds}-round game complete</p>
+            <p className="text-xs mt-1.5 uppercase tracking-widest" style={{ color: 'rgba(134,187,134,0.5)' }}>
+              {totalRounds}-round game complete
+            </p>
           </div>
 
-          {/* Final totals */}
           <div className="space-y-2 mb-4">
             {[
-              { name: me?.name ?? 'You', total: myTotal, isMe: true, won: won || (tied) },
-              { name: opponent?.name ?? 'Opponent', total: oppTotal, isMe: false, won: !won || tied },
+              { name: me?.name ?? 'You', total: myTotal, isMe: true },
+              { name: opponent?.name ?? 'Opponent', total: oppTotal, isMe: false },
             ].map(({ name, total, isMe }) => (
-              <div key={name} className={`p-3 rounded-xl flex items-center justify-between ${isMe ? 'bg-yellow-500/20 border border-yellow-500/40' : 'bg-green-900/40 border border-green-700'}`}>
-                <div className={`font-semibold ${isMe ? 'text-yellow-300' : 'text-white'}`}>{name}{isMe ? ' (you)' : ''}</div>
-                <div className={`text-2xl font-mono font-bold ${isMe ? 'text-yellow-300' : 'text-white'}`}>{total}</div>
+              <div
+                key={name}
+                className="p-3 rounded-xl flex items-center justify-between"
+                style={isMe ? {
+                  background: 'rgba(212,160,23,0.1)',
+                  border: '1px solid rgba(212,160,23,0.3)',
+                } : {
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <div className="font-semibold" style={{ color: isMe ? '#d4a017' : 'rgba(255,255,255,0.85)' }}>
+                  {name}{isMe ? ' (you)' : ''}
+                </div>
+                <div className="text-2xl font-mono font-bold" style={{ color: isMe ? '#d4a017' : 'rgba(255,255,255,0.9)' }}>{total}</div>
               </div>
             ))}
           </div>
 
-          {/* Per-round breakdown */}
-          <div className="bg-green-900/40 rounded-xl p-3 border border-green-700 mb-5">
-            <div className="text-green-400 text-xs font-semibold mb-2 uppercase tracking-wide flex justify-between">
-              <span>Round Breakdown</span>
-              <span className="text-yellow-400">{me?.name ?? 'You'}</span>
-              <span className="text-white">{opponent?.name ?? 'Opp'}</span>
+          <div className="rounded-xl p-3 mb-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="text-xs font-semibold mb-2 uppercase tracking-widest flex justify-between" style={{ color: 'rgba(212,160,23,0.6)' }}>
+              <span>Breakdown</span>
+              <span style={{ color: '#d4a017' }}>{me?.name ?? 'You'}</span>
+              <span className="text-white/50">{opponent?.name ?? 'Opp'}</span>
             </div>
             {(gameState.roundScores?.[0] ?? []).map((_, i) => {
               const myR = gameState.roundScores[playerIndex][i];
               const oppR = gameState.roundScores[1 - playerIndex][i];
               return (
-                <div key={i} className="flex items-center text-xs py-0.5 border-t border-green-800/60">
-                  <span className="text-green-500 flex-1">Round {i + 1}</span>
-                  <span className={`w-12 text-center font-mono ${myR < oppR ? 'text-yellow-300 font-bold' : 'text-green-300'}`}>{myR}</span>
-                  <span className={`w-12 text-center font-mono ${oppR < myR ? 'text-white font-bold' : 'text-green-400'}`}>{oppR}</span>
+                <div key={i} className="flex items-center text-xs py-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span className="flex-1" style={{ color: 'rgba(100,150,100,0.7)' }}>Round {i + 1}</span>
+                  <span className="w-12 text-center font-mono" style={{ color: myR <= oppR ? '#d4a017' : 'rgba(255,255,255,0.4)' }}>{myR}</span>
+                  <span className="w-12 text-center font-mono" style={{ color: oppR <= myR ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)' }}>{oppR}</span>
                 </div>
               );
             })}
@@ -284,7 +327,8 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
 
           <button
             onClick={() => window.location.reload()}
-            className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-gray-900 font-bold rounded-xl transition-all shadow-lg"
+            className="w-full py-3 font-bold rounded-xl transition-all text-sm tracking-wide"
+            style={GOLD_BTN}
           >
             Play Again
           </button>
@@ -295,36 +339,52 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
 
   const topDiscard = gameState.discardPile[gameState.discardPile.length - 1];
   const isRevealing = (gameState.status === 'round_over' || gameState.status === 'finished') && !showResults;
+  const canDraw = isMyTurn && gameState.turnPhase === 'draw' && !isRevealing;
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-3 gap-3" style={{ background: 'linear-gradient(to bottom, #166534, #052e16)' }}>
+    <div className="min-h-screen flex flex-col items-center p-3 gap-3" style={{ background: BG }}>
       {/* Header */}
-      <div className="w-full max-w-sm flex justify-between items-center">
-        <div className="text-green-400 text-xs font-mono opacity-70">#{roomCode}</div>
+      <div className="w-full max-w-sm flex justify-between items-center py-1">
+        <div className="font-mono text-xs tracking-widest opacity-40 text-white">#{roomCode}</div>
         <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-semibold">⛳ Golf</span>
+          <span className="text-white text-sm font-bold tracking-widest">⛳ GOLF</span>
           {totalRounds > 1 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-700/60 text-green-300 border border-green-600/50">
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+              style={{ background: 'rgba(212,160,23,0.15)', color: 'rgba(212,160,23,0.85)', border: '1px solid rgba(212,160,23,0.2)' }}
+            >
               R{currentRound}/{totalRounds}
             </span>
           )}
         </div>
-        <div className={`text-xs px-2 py-0.5 rounded-full font-semibold transition-all ${
-          isRevealing ? 'bg-purple-700/80 text-purple-200' :
-          isMyTurn ? 'bg-yellow-500 text-gray-900' : 'bg-green-700/60 text-green-300'
-        }`}>
+        <div
+          className="text-xs px-2.5 py-0.5 rounded-full font-semibold transition-all"
+          style={isRevealing ? {
+            background: 'rgba(139,92,246,0.3)',
+            color: 'rgba(196,181,253,0.9)',
+            border: '1px solid rgba(139,92,246,0.3)',
+          } : isMyTurn ? {
+            background: 'linear-gradient(to right, #d4a017, #a07010)',
+            color: '#1a0f00',
+            boxShadow: '0 0 10px rgba(212,160,23,0.4)',
+          } : {
+            background: 'rgba(255,255,255,0.06)',
+            color: 'rgba(200,200,200,0.5)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
           {isRevealing ? 'Revealing' : isMyTurn ? 'Your Turn' : 'Waiting'}
         </div>
       </div>
 
       {/* Opponent's hand */}
       <div className="w-full max-w-sm flex flex-col items-center">
-        <div className="text-green-300 text-xs mb-1.5 text-center flex items-center gap-2 justify-center">
+        <div className="text-xs mb-2 text-center flex items-center gap-2 justify-center" style={{ color: 'rgba(134,187,134,0.65)' }}>
           <span>{opponent?.name ?? 'Opponent'}</span>
-          <span className="text-green-500">·</span>
+          <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
           <span className="font-mono">{isRevealing ? oppScore : oppCumulativeScore} pts</span>
           {!isMyTurn && (gameState.status === 'playing' || gameState.status === 'last_round') && (
-            <span className="text-yellow-400 font-semibold text-xs">▶ TURN</span>
+            <span className="font-semibold text-xs" style={{ color: '#d4a017' }}>▶ TURN</span>
           )}
         </div>
         {opponent && (
@@ -346,42 +406,72 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
       </div>
 
       {/* Status message */}
-      <div className={`rounded-lg px-4 py-2 w-full max-w-sm text-center border transition-all ${
-        isRevealing
-          ? 'bg-purple-900/40 border-purple-700/50'
-          : 'bg-green-900/40 border-green-700/50'
-      }`}>
-        <p className="text-white text-sm font-medium">{getStatusMessage()}</p>
+      <div
+        className="rounded-xl px-4 py-2 w-full max-w-sm text-center transition-all"
+        style={isRevealing ? {
+          background: 'rgba(139,92,246,0.12)',
+          border: '1px solid rgba(139,92,246,0.2)',
+        } : isMyTurn && (gameState.status === 'playing' || gameState.status === 'last_round') ? {
+          background: 'rgba(212,160,23,0.1)',
+          border: '1px solid rgba(212,160,23,0.25)',
+        } : {
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.07)',
+        }}
+      >
+        <p className="text-sm font-medium" style={{ color: isMyTurn && !isRevealing ? 'rgba(255,235,180,0.95)' : 'rgba(200,210,200,0.75)' }}>
+          {getStatusMessage()}
+        </p>
       </div>
 
-      {/* Center: Deck + Discard + Drawn Card */}
+      {/* Center: Deck + Drawn Card + Discard */}
       {gameState.status !== 'initial_flip' && (
-        <div className="flex items-center gap-4">
+        <div
+          className="w-full max-w-sm rounded-2xl flex items-center justify-center gap-5 py-4 px-4"
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(10,28,12,0.95) 0%, rgba(4,12,5,0.98) 100%)',
+            border: '1px solid rgba(212,160,23,0.1)',
+            boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.5)',
+          }}
+        >
           {/* Deck */}
           <div className="flex flex-col items-center gap-1">
-            <div className="text-green-400 text-xs">{gameState.deck.length} left</div>
+            <div className="text-xs mb-1" style={{ color: 'rgba(134,187,134,0.5)' }}>{gameState.deck.length} left</div>
             <button
               onClick={handleDrawDeck}
-              disabled={!isMyTurn || gameState.turnPhase !== 'draw' || updating || isRevealing}
-              className={`w-16 h-24 rounded-xl border-2 bg-blue-900 flex items-center justify-center transition-all shadow-lg
-                ${isMyTurn && gameState.turnPhase === 'draw' && !isRevealing
-                  ? 'border-yellow-400 hover:brightness-110 cursor-pointer active:scale-95 shadow-yellow-900/30'
-                  : 'border-blue-800 opacity-60 cursor-not-allowed'}`}
+              disabled={!canDraw || updating || isRevealing}
+              className={`w-16 h-24 rounded-xl flex items-center justify-center transition-all ${canDraw ? 'turn-pulse' : ''}`}
+              style={{
+                background: 'linear-gradient(155deg, #1c3161, #111e45)',
+                backgroundImage: [
+                  'repeating-linear-gradient(45deg, rgba(212,160,23,0.07) 0px, rgba(212,160,23,0.07) 1px, transparent 1px, transparent 9px)',
+                  'repeating-linear-gradient(-45deg, rgba(212,160,23,0.07) 0px, rgba(212,160,23,0.07) 1px, transparent 1px, transparent 9px)',
+                  'linear-gradient(155deg, #1c3161, #111e45)',
+                ].join(', '),
+                border: canDraw ? '2px solid rgba(212,160,23,0.7)' : '1px solid rgba(50,70,120,0.6)',
+                boxShadow: canDraw ? '0 4px 12px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.4)',
+                opacity: !isMyTurn || gameState.turnPhase !== 'draw' || isRevealing ? 0.55 : 1,
+                cursor: canDraw ? 'pointer' : 'not-allowed',
+              }}
             >
-              <span className="text-white text-3xl">🂠</span>
+              <span className="text-amber-300/30 text-xl">♠</span>
             </button>
           </div>
 
           {/* Drawn card */}
           {gameState.drawnCard && (
             <div className="flex flex-col items-center gap-1">
-              <div className="text-yellow-400 text-xs font-semibold">Drawn</div>
+              <div className="text-xs mb-1 font-semibold" style={{ color: '#d4a017' }}>Drawn</div>
               <CardComponent card={gameState.drawnCard} />
               {isMyTurn && gameState.turnPhase === 'act' && (
                 <button
                   onClick={handleDiscard}
                   disabled={updating}
-                  className="mt-1 px-3 py-1 bg-red-700/80 hover:bg-red-600 active:scale-95 text-white text-xs font-bold rounded-lg transition-all border border-red-600/50"
+                  className="mt-1 px-3 py-1 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50"
+                  style={{
+                    background: 'rgba(180,30,30,0.7)',
+                    border: '1px solid rgba(239,68,68,0.4)',
+                  }}
                 >
                   Discard
                 </button>
@@ -391,25 +481,24 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
 
           {/* Discard pile */}
           <div className="flex flex-col items-center gap-1">
-            <div className="text-green-400 text-xs">Discard</div>
+            <div className="text-xs mb-1" style={{ color: 'rgba(134,187,134,0.5)' }}>Discard</div>
             {topDiscard ? (
               <button
                 onClick={handleDrawDiscard}
-                disabled={!isMyTurn || gameState.turnPhase !== 'draw' || updating || isRevealing}
-                className={`transition-all rounded-xl ${
-                  isMyTurn && gameState.turnPhase === 'draw' && !isRevealing
-                    ? 'hover:brightness-110 cursor-pointer active:scale-95'
-                    : 'opacity-80 cursor-not-allowed'
-                }`}
+                disabled={!canDraw || updating || isRevealing}
+                className={`transition-all rounded-xl ${canDraw ? 'hover:brightness-110 cursor-pointer active:scale-95' : 'opacity-80 cursor-not-allowed'}`}
               >
                 <CardComponent
                   card={topDiscard}
-                  highlight={isMyTurn && gameState.turnPhase === 'draw' && !isRevealing ? 'select' : 'none'}
+                  highlight={canDraw ? 'select' : 'none'}
                 />
               </button>
             ) : (
-              <div className="w-16 h-24 rounded-xl border-2 border-dashed border-green-700 flex items-center justify-center">
-                <span className="text-green-600 text-xs">Empty</span>
+              <div
+                className="w-16 h-24 rounded-xl flex items-center justify-center"
+                style={{ border: '1px dashed rgba(134,187,134,0.25)' }}
+              >
+                <span className="text-xs" style={{ color: 'rgba(100,140,100,0.4)' }}>Empty</span>
               </div>
             )}
           </div>
@@ -418,12 +507,12 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
 
       {/* My hand */}
       <div className="w-full max-w-sm flex flex-col items-center">
-        <div className="text-green-300 text-xs mb-1.5 text-center flex items-center gap-2 justify-center">
+        <div className="text-xs mb-2 text-center flex items-center gap-2 justify-center" style={{ color: 'rgba(134,187,134,0.65)' }}>
           <span>{me?.name ?? playerName} (you)</span>
-          <span className="text-green-500">·</span>
+          <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
           <span className="font-mono">{isRevealing ? myScore : myCumulativeScore} pts</span>
           {isMyTurn && (gameState.status === 'playing' || gameState.status === 'last_round') && (
-            <span className="text-yellow-400 font-semibold text-xs">▶ TURN</span>
+            <span className="font-semibold text-xs" style={{ color: '#d4a017' }}>▶ TURN</span>
           )}
         </div>
         {me && (
@@ -452,8 +541,8 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
       </div>
 
       {gameState.status === 'initial_flip' && (
-        <div className="text-green-400 text-xs text-center max-w-xs opacity-80">
-          Tap {2 - (me?.initialFlipsDone ?? 0)} of your cards to peek before the game starts
+        <div className="text-xs text-center max-w-xs" style={{ color: 'rgba(134,187,134,0.5)' }}>
+          Tap {2 - (me?.initialFlipsDone ?? 0)} of your cards to peek before play begins
         </div>
       )}
     </div>
