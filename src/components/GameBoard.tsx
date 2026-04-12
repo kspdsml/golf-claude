@@ -10,6 +10,7 @@ import {
   calculateScore,
   deepClone,
   startNextRound,
+  initGameState,
 } from '../lib/gameLogic';
 import { CardComponent } from './CardComponent';
 
@@ -40,7 +41,30 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
   const [showResults, setShowResults] = useState(
     initialState.status === 'round_over' || initialState.status === 'finished'
   );
+  const [opError, setOpError] = useState<string | null>(null);
+  const [connStatus, setConnStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
   const prevStatusRef = useRef(initialState.status);
+  const opErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isDisconnected = connStatus === 'disconnected' || connStatus === 'error';
+
+  const ConnBanner = isDisconnected ? (
+    <div
+      className="w-full max-w-sm mx-auto px-4 py-2 rounded-xl text-xs font-semibold text-center mb-2"
+      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: 'rgba(252,165,165,0.9)' }}
+    >
+      {connStatus === 'error' ? '⚠ Connection error — moves may not sync' : '⚠ Reconnecting…'}
+    </div>
+  ) : null;
+
+  const OpErrorBanner = opError ? (
+    <div
+      className="w-full max-w-sm mx-auto px-4 py-2 rounded-xl text-xs font-semibold text-center mb-2"
+      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: 'rgba(252,165,165,0.9)' }}
+    >
+      ⚠ {opError}
+    </div>
+  ) : null;
 
   const isMyTurn = gameState.currentPlayer === playerIndex;
   const me = gameState.players[playerIndex];
@@ -56,18 +80,30 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
   const totalRounds = gameState.totalRounds ?? 6;
   const currentRound = gameState.currentRound ?? 1;
 
+  const showOpError = useCallback((msg: string) => {
+    setOpError(msg);
+    if (opErrorTimerRef.current) clearTimeout(opErrorTimerRef.current);
+    opErrorTimerRef.current = setTimeout(() => setOpError(null), 4000);
+  }, []);
+
   const updateState = useCallback(async (newState: GameState) => {
     setUpdating(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from('rooms')
         .update({ game_state: newState })
         .eq('code', roomCode);
-      setGameState(newState);
+      if (error) {
+        showOpError('Failed to sync move. Try again.');
+      } else {
+        setGameState(newState);
+      }
+    } catch {
+      showOpError('Connection error. Check your network.');
     } finally {
       setUpdating(false);
     }
-  }, [roomCode]);
+  }, [roomCode, showOpError]);
 
   useEffect(() => {
     const channel = supabase
@@ -78,12 +114,31 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
         table: 'rooms',
         filter: `code=eq.${roomCode}`,
       }, (payload) => {
-        setGameState(payload.new.game_state);
+        const gs = payload.new.game_state as GameState;
+        setGameState(gs);
+
+        // When both players have voted for rematch, player 0 reinitialises the game
+        if (
+          gs.status === 'finished' &&
+          (gs.rematchVotes?.length ?? 0) >= 2 &&
+          playerIndex === 0
+        ) {
+          const newGame = initGameState(
+            gs.players[0].name, gs.players[0].id,
+            gs.players[1].name, gs.players[1].id,
+            gs.totalRounds,
+          );
+          supabase.from('rooms').update({ game_state: newGame }).eq('code', roomCode);
+        }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setConnStatus('connected');
+        else if (status === 'CHANNEL_ERROR') setConnStatus('error');
+        else if (status === 'TIMED_OUT' || status === 'CLOSED') setConnStatus('disconnected');
+      });
 
     return () => { supabase.removeChannel(channel); };
-  }, [roomCode]);
+  }, [roomCode, playerIndex]);
 
   useEffect(() => {
     const prev = prevStatusRef.current;
@@ -143,6 +198,27 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
     await updateState(newState);
   };
 
+  const handlePlayAgain = async () => {
+    if (updating) return;
+    const gs = deepClone(gameState);
+    const votes: number[] = gs.rematchVotes ?? [];
+    if (votes.includes(playerIndex)) return; // already voted
+    votes.push(playerIndex);
+    gs.rematchVotes = votes;
+
+    if (votes.length >= 2 && playerIndex === 0) {
+      // Both players ready — player 0 owns the reinit to avoid double-write
+      const newGame = initGameState(
+        gs.players[0].name, gs.players[0].id,
+        gs.players[1].name, gs.players[1].id,
+        gs.totalRounds,
+      );
+      await updateState(newGame);
+    } else {
+      await updateState(gs);
+    }
+  };
+
   const getStatusMessage = () => {
     if (gameState.status === 'round_over' && !showResults) return 'Viewing final cards...';
     if (gameState.status === 'finished' && !showResults) return 'Game over — viewing final cards...';
@@ -174,7 +250,9 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
     const roundWinner = myRoundScore < oppRoundScore ? 'me' : oppRoundScore < myRoundScore ? 'opp' : 'tie';
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: BG }}>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: BG }}>
+        {ConnBanner}
+        {OpErrorBanner}
         <div className="w-full max-w-sm rounded-2xl p-6 fade-slide-up" style={PANEL}>
           <div className="text-center mb-5">
             <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgba(212,160,23,0.7)' }}>
@@ -268,7 +346,9 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
     const tied = gameState.winner === -1;
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: BG }}>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: BG }}>
+        {ConnBanner}
+        {OpErrorBanner}
         <div className="w-full max-w-sm rounded-2xl p-6 fade-slide-up" style={PANEL}>
           <div className="text-center mb-6">
             <div className="text-5xl mb-3" style={{ filter: tied || won ? 'drop-shadow(0 0 16px rgba(212,160,23,0.6))' : undefined }}>
@@ -325,13 +405,40 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
             })}
           </div>
 
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full py-3 font-bold rounded-xl transition-all text-sm tracking-wide"
-            style={GOLD_BTN}
-          >
-            Play Again
-          </button>
+          {(() => {
+            const votes = gameState.rematchVotes ?? [];
+            const iVoted = votes.includes(playerIndex);
+            const bothVoted = votes.length >= 2;
+            if (bothVoted) {
+              return (
+                <div className="py-3 text-center text-sm" style={{ color: 'rgba(134,187,134,0.7)' }}>
+                  Starting new game…
+                </div>
+              );
+            }
+            if (iVoted) {
+              return (
+                <div className="py-3 text-center">
+                  <div className="flex gap-1.5 justify-center mb-2">
+                    {[0,1,2].map(i => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'rgba(212,160,23,0.4)', animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </div>
+                  <span className="text-sm" style={{ color: 'rgba(134,187,134,0.6)' }}>Waiting for opponent…</span>
+                </div>
+              );
+            }
+            return (
+              <button
+                onClick={handlePlayAgain}
+                disabled={updating}
+                className="w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 text-sm tracking-wide"
+                style={GOLD_BTN}
+              >
+                {updating ? 'Please wait…' : 'Play Again'}
+              </button>
+            );
+          })()}
         </div>
       </div>
     );
@@ -343,6 +450,8 @@ export const GameBoard: React.FC<Props> = ({ roomCode, playerIndex, playerName, 
 
   return (
     <div className="min-h-screen flex flex-col items-center p-3 gap-3" style={{ background: BG }}>
+      {ConnBanner}
+      {OpErrorBanner}
       {/* Header */}
       <div className="w-full max-w-sm flex justify-between items-center py-1">
         <div className="font-mono text-xs tracking-widest opacity-40 text-white">#{roomCode}</div>

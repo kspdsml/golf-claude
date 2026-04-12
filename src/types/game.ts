@@ -31,6 +31,7 @@ export interface GameState {
   totalRounds: number;
   currentRound: number;
   roundScores: [number[], number[]];
+  rematchVotes?: number[];
 }
 
 export interface Room {
